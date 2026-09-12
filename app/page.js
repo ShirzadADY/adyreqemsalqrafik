@@ -27,13 +27,14 @@ export default function Home() {
       setMashinistler(mData || []);
     }
 
-    // 2. Bazadakı vəzifələri çək
+    // 2. 'vezifeler' cədvəlindən vəzifələri çək
     const { data: vData, error: vError } = await supabase.from('vezifeler').select('*');
     if (vError) {
       console.error('Vəzifə çəkilərkən xəta:', vError.message);
     } else {
       console.log('Bazadan gələn vəzifələr:', vData);
       setDbVezifeler(vData || []);
+      
       // Əgər vəzifələr gəlibsə, ilkin olaraq birincisini seçili edək
       if (vData && vData.length > 0) {
         setSecilenVezife(vData[0].ad);
@@ -172,7 +173,7 @@ export default function Home() {
                         <option value="">Vəzifələr yüklənir...</option>
                       ) : (
                         dbVezifeler.map((v) => (
-                          <option key={v.id} value={v.ad}>
+                          <option key={v.id || v.ad} value={v.ad}>
                             {v.ad}
                           </option>
                         ))
