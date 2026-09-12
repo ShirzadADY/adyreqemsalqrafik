@@ -31,11 +31,11 @@ export default function Home() {
     const { data: vData, error: vError } = await supabase.from('vezifeler').select('*');
     if (vError) {
       console.error('Vəzifə çəkilərkən xəta:', vError.message);
+      alert('Vəzifələr oxunmadı: ' + vError.message);
     } else {
       console.log('Bazadan gələn vəzifələr:', vData);
       setDbVezifeler(vData || []);
       
-      // Əgər vəzifələr gəlibsə, ilkin olaraq birincisini seçili edək
       if (vData && vData.length > 0) {
         setSecilenVezife(vData[0].ad);
       }
@@ -65,7 +65,7 @@ export default function Home() {
     ]);
 
     if (error) {
-      alert('Xəta baş verdi (Ola bilər bu Tabel № artıq mövcuddur): ' + error.message);
+      alert('Xəta baş verdi: ' + error.message);
     } else {
       alert('Maşinist uğurla əlavə olundu!');
       setTabelNo('');
@@ -75,7 +75,6 @@ export default function Home() {
     }
   };
 
-  // Maşinist sil
   const handleDelete = async (tabel) => {
     if (confirm(`${tabel} nömrəli işçini silmək istədiyinizə əminsinizmi?`)) {
       const { error } = await supabase.from('mashinistler').delete().eq('tabel_no', tabel);
@@ -89,7 +88,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Header */}
       <header className="bg-slate-900 text-white shadow-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center space-x-3">
@@ -102,7 +100,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
           <div className="flex bg-slate-800 p-1.5 rounded-xl border border-slate-700">
             <button
               onClick={() => setActiveTab('grafik')}
@@ -126,12 +123,9 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        
         {activeTab === 'heyet' && (
           <div className="space-y-8">
-            {/* Maşinist Əlavəetmə Formu */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <Plus className="w-5 h-5 text-blue-600" />
@@ -169,8 +163,10 @@ export default function Home() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-800"
                       required
                     >
-                      {dbVezifeler.length === 0 ? (
-                        <option value="">Vəzifələr yüklənir...</option>
+                      {loading ? (
+                        <option value="">Yüklənir...</option>
+                      ) : dbVezifeler.length === 0 ? (
+                        <option value="">Cədvəl boşdur! Vəzifə əlavə edin</option>
                       ) : (
                         dbVezifeler.map((v) => (
                           <option key={v.id || v.ad} value={v.ad}>
@@ -203,7 +199,6 @@ export default function Home() {
               </form>
             </div>
 
-            {/* Maşinistlər Cədvəli */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 className="text-lg font-bold text-slate-800">Maşinistlərin Tabel Siyahısı</h3>
@@ -231,7 +226,7 @@ export default function Home() {
                     {mashinistler.length === 0 ? (
                       <tr>
                         <td colSpan="6" className="py-8 text-center text-slate-400">
-                          Hələ heç bir maşinist əlavə edilməyib. Yuxarıdakı formdan əlavə edin.
+                          Hələ heç bir maşinist əlavə edilməyib.
                         </td>
                       </tr>
                     ) : (
@@ -276,7 +271,6 @@ export default function Home() {
             <p className="text-sm text-slate-500 mt-1">Maşinistləri əlavə etdikdən sonra burada tabel nömrələri ilə avtomatik qrafik qurulacaq.</p>
           </div>
         )}
-
       </div>
     </main>
   );
