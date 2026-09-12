@@ -12,10 +12,10 @@ export default function Home() {
   // Form state
   const [tabelNo, setTabelNo] = useState('');
   const [adSoyad, setAdSoyad] = useState('');
-  const [secilenVezifeler, setSecilenVezifeler] = useState([]);
+  const [secilenVezife, setSecilenVezife] = useState('');
   const [telefonState, setTelefonState] = useState('');
 
-  // Bazadan məlumatları çəkən əsas funksiya
+  // Bazadan məlumatları çəkən funksiya
   const fetchData = async () => {
     setLoading(true);
     
@@ -27,14 +27,17 @@ export default function Home() {
       setMashinistler(mData || []);
     }
 
-    // 2. Vəzifələri çək
+    // 2. Bazadakı vəzifələri çək
     const { data: vData, error: vError } = await supabase.from('vezifeler').select('*');
     if (vError) {
-      console.error('Vəzifə çəkilərkən xəta baş verdi:', vError.message);
-      alert('Vəzifələr yüklənmədi: ' + vError.message);
+      console.error('Vəzifə çəkilərkən xəta:', vError.message);
     } else {
       console.log('Bazadan gələn vəzifələr:', vData);
       setDbVezifeler(vData || []);
+      // Əgər vəzifələr gəlibsə, ilkin olaraq birincisini seçili edək
+      if (vData && vData.length > 0) {
+        setSecilenVezife(vData[0].ad);
+      }
     }
 
     setLoading(false);
@@ -44,15 +47,6 @@ export default function Home() {
     fetchData();
   }, []);
 
-  // Checkbox dəyişdikdə siyahıya əlavə et və ya çıxar
-  const handleCheckboxChange = (vezifeAdi) => {
-    if (secilenVezifeler.includes(vezifeAdi)) {
-      setSecilenVezifeler(secilenVezifeler.filter(v => v !== vezifeAdi));
-    } else {
-      setSecilenVezifeler([...secilenVezifeler, vezifeAdi]);
-    }
-  };
-
   // Yeni maşinist əlavə et
   const handleAddMashinist = async (e) => {
     e.preventDefault();
@@ -60,15 +54,13 @@ export default function Home() {
       alert('Zəhmət olmasa Tabel nömrəsini və Ad Soyadı daxil edin!');
       return;
     }
-    if (secilenVezifeler.length === 0) {
-      alert('Ən azı bir vəzifə/ixtisas seçin!');
+    if (!secilenVezife) {
+      alert('Zəhmət olmasa vəzifə seçin!');
       return;
     }
 
-    const finalVezife = secilenVezifeler.join(', ');
-
     const { error } = await supabase.from('mashinistler').insert([
-      { tabel_no: tabelNo, ad_soyad: adSoyad, vezife: finalVezife, telefon: telefonState, status: 'Aktiv' }
+      { tabel_no: tabelNo, ad_soyad: adSoyad, vezife: secilenVezife, telefon: telefonState, status: 'Aktiv' }
     ]);
 
     if (error) {
@@ -77,7 +69,6 @@ export default function Home() {
       alert('Maşinist uğurla əlavə olundu!');
       setTabelNo('');
       setAdSoyad('');
-      setSecilenVezifeler([]);
       setTelefonState('');
       fetchData();
     }
@@ -146,7 +137,7 @@ export default function Home() {
                 Yeni Maşinist / İşçi Əlavə Et
               </h3>
               <form onSubmit={handleAddMashinist} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Tabel №</label>
                     <input
@@ -170,6 +161,25 @@ export default function Home() {
                     />
                   </div>
                   <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Vəzifə (Bazadan)</label>
+                    <select
+                      value={secilenVezife}
+                      onChange={(e) => setSecilenVezife(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-800"
+                      required
+                    >
+                      {dbVezifeler.length === 0 ? (
+                        <option value="">Vəzifələr yüklənir...</option>
+                      ) : (
+                        dbVezifeler.map((v) => (
+                          <option key={v.id} value={v.ad}>
+                            {v.ad}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Əlaqə nömrəsi</label>
                     <input
                       type="text"
@@ -181,32 +191,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Bazadan gələn Vəzifələr (Checkbox siyahısı) */}
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
-                    İxtisas / Vəzifələr (Bazadan oxunur):
-                  </label>
-                  
-                  {dbVezifeler.length === 0 ? (
-                    <p className="text-sm text-red-500">Heç bir vəzifə tapılmadı və ya bazadan oxunmur. (F12-ni açıb Console-a baxın)</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-4 items-center">
-                      {dbVezifeler.map((v) => (
-                        <label key={v.id || v.ad} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-800 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-xs hover:bg-slate-100 transition-all">
-                          <input
-                            type="checkbox"
-                            checked={secilenVezifeler.includes(v.ad)}
-                            onChange={() => handleCheckboxChange(v.ad)}
-                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                          />
-                          {v.ad}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div>
+                <div className="pt-2">
                   <button
                     type="submit"
                     className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm transition-all text-sm"
