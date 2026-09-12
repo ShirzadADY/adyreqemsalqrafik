@@ -15,19 +15,27 @@ export default function Home() {
   const [secilenVezifeler, setSecilenVezifeler] = useState([]);
   const [telefonState, setTelefonState] = useState('');
 
-  // Bazadan həm maşinistləri, həm də vəzifələri çək
+  // Bazadan məlumatları çəkən əsas funksiya
   const fetchData = async () => {
     setLoading(true);
     
-    // Maşinistləri çək
+    // 1. Maşinistləri çək
     const { data: mData, error: mError } = await supabase.from('mashinistler').select('*');
-    if (mError) console.error('Maşinist xətası:', mError.message);
-    else setMashinistler(mData || []);
+    if (mError) {
+      console.error('Maşinist xətası:', mError.message);
+    } else {
+      setMashinistler(mData || []);
+    }
 
-    // Vəzifələri bazadan çək
+    // 2. Vəzifələri çək
     const { data: vData, error: vError } = await supabase.from('vezifeler').select('*');
-    if (vError) console.error('Vəzifə xətası:', vError.message);
-    else setDbVezifeler(vData || []);
+    if (vError) {
+      console.error('Vəzifə çəkilərkən xəta baş verdi:', vError.message);
+      alert('Vəzifələr yüklənmədi: ' + vError.message);
+    } else {
+      console.log('Bazadan gələn vəzifələr:', vData);
+      setDbVezifeler(vData || []);
+    }
 
     setLoading(false);
   };
@@ -57,7 +65,6 @@ export default function Home() {
       return;
     }
 
-    // Seçilmiş vəzifələri vergüllə birləşdirək (məs: "Elektrik Qatarı Maşinisti, Teplovoz Maşinisti")
     const finalVezife = secilenVezifeler.join(', ');
 
     const { error } = await supabase.from('mashinistler').insert([
@@ -177,21 +184,26 @@ export default function Home() {
                 {/* Bazadan gələn Vəzifələr (Checkbox siyahısı) */}
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                   <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
-                    İxtisas / Vəzifələr (Bazadan oxunur - Bir neçəni seçə bilərsiniz):
+                    İxtisas / Vəzifələr (Bazadan oxunur):
                   </label>
-                  <div className="flex flex-wrap gap-4 items-center">
-                    {dbVezifeler.map((v) => (
-                      <label key={v.id} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-800 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-xs hover:bg-slate-100 transition-all">
-                        <input
-                          type="checkbox"
-                          checked={secilenVezifeler.includes(v.ad)}
-                          onChange={() => handleCheckboxChange(v.ad)}
-                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                        />
-                        {v.ad}
-                      </label>
-                    ))}
-                  </div>
+                  
+                  {dbVezifeler.length === 0 ? (
+                    <p className="text-sm text-red-500">Heç bir vəzifə tapılmadı və ya bazadan oxunmur. (F12-ni açıb Console-a baxın)</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-4 items-center">
+                      {dbVezifeler.map((v) => (
+                        <label key={v.id || v.ad} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-800 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-xs hover:bg-slate-100 transition-all">
+                          <input
+                            type="checkbox"
+                            checked={secilenVezifeler.includes(v.ad)}
+                            onChange={() => handleCheckboxChange(v.ad)}
+                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          />
+                          {v.ad}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
