@@ -1,45 +1,67 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Train, Calendar, Users, Clock, Download, RefreshCw, CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { Train, Calendar, Users, RefreshCw, Plus, Trash2 } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('heyet');
   const [mashinistler, setMashinistler] = useState([]);
+  const [dbVezifeler, setDbVezifeler] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Form state
   const [tabelNo, setTabelNo] = useState('');
   const [adSoyad, setAdSoyad] = useState('');
-  const [vezife, setVezife] = useState('Elektrik və Teplovoz Maşinisti (İkili)');
-  const [telefon, setTelefon] = useState('');
+  const [secilenVezifeler, setSecilenVezifeler] = useState([]);
+  const [telefonState, setTelefonState] = useState('');
 
-  // Maşinistləri bazadan çək
-  const fetchMashinistler = async () => {
+  // Bazadan həm maşinistləri, həm də vəzifələri çək
+  const fetchData = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('mashinistler').select('*');
-    if (error) {
-      console.error('Xəta:', error.message);
-    } else {
-      setMashinistler(data || []);
-    }
+    
+    // Maşinistləri çək
+    const { data: mData, error: mError } = await supabase.from('mashinistler').select('*');
+    if (mError) console.error('Maşinist xətası:', mError.message);
+    else setMashinistler(mData || []);
+
+    // Vəzifələri bazadan çək
+    const { data: vData, error: vError } = await supabase.from('vezifeler').select('*');
+    if (vError) console.error('Vəzifə xətası:', vError.message);
+    else setDbVezifeler(vData || []);
+
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchMashinistler();
+    fetchData();
   }, []);
 
-  // Yeni maşinist əlavə et (Tabel № ilə)
+  // Checkbox dəyişdikdə siyahıya əlavə et və ya çıxar
+  const handleCheckboxChange = (vezifeAdi) => {
+    if (secilenVezifeler.includes(vezifeAdi)) {
+      setSecilenVezifeler(secilenVezifeler.filter(v => v !== vezifeAdi));
+    } else {
+      setSecilenVezifeler([...secilenVezifeler, vezifeAdi]);
+    }
+  };
+
+  // Yeni maşinist əlavə et
   const handleAddMashinist = async (e) => {
     e.preventDefault();
     if (!tabelNo || !adSoyad) {
       alert('Zəhmət olmasa Tabel nömrəsini və Ad Soyadı daxil edin!');
       return;
     }
+    if (secilenVezifeler.length === 0) {
+      alert('Ən azı bir vəzifə/ixtisas seçin!');
+      return;
+    }
+
+    // Seçilmiş vəzifələri vergüllə birləşdirək (məs: "Elektrik Qatarı Maşinisti, Teplovoz Maşinisti")
+    const finalVezife = secilenVezifeler.join(', ');
 
     const { error } = await supabase.from('mashinistler').insert([
-      { tabel_no: tabelNo, ad_soyad: adSoyad, vezife: vezife, telefon: telefon, status: 'Aktiv' }
+      { tabel_no: tabelNo, ad_soyad: adSoyad, vezife: finalVezife, telefon: telefonState, status: 'Aktiv' }
     ]);
 
     if (error) {
@@ -48,8 +70,9 @@ export default function Home() {
       alert('Maşinist uğurla əlavə olundu!');
       setTabelNo('');
       setAdSoyad('');
-      setTelefon('');
-      fetchMashinistler();
+      setSecilenVezifeler([]);
+      setTelefonState('');
+      fetchData();
     }
   };
 
@@ -60,7 +83,7 @@ export default function Home() {
       if (error) {
         alert('Silinmə xətası: ' + error.message);
       } else {
-        fetchMashinistler();
+        fetchData();
       }
     }
   };
@@ -115,59 +138,68 @@ export default function Home() {
                 <Plus className="w-5 h-5 text-blue-600" />
                 Yeni Maşinist / İşçi Əlavə Et
               </h3>
-              <form onSubmit={handleAddMashinist} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Tabel №</label>
-                  <input
-                    type="text"
-                    placeholder="Məs: 1045"
-                    value={tabelNo}
-                    onChange={(e) => setTabelNo(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    required
-                  />
+              <form onSubmit={handleAddMashinist} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Tabel №</label>
+                    <input
+                      type="text"
+                      placeholder="Məs: 1045"
+                      value={tabelNo}
+                      onChange={(e) => setTabelNo(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Ad Soyad</label>
+                    <input
+                      type="text"
+                      placeholder="Məs: Şirzad Əliyev"
+                      value={adSoyad}
+                      onChange={(e) => setAdSoyad(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Əlaqə nömrəsi</label>
+                    <input
+                      type="text"
+                      placeholder="+994 (XX) XXX-XX-XX"
+                      value={telefonState}
+                      onChange={(e) => setTelefonState(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Ad Soyad</label>
-                  <input
-                    type="text"
-                    placeholder="Məs: Şirzad Əliyev"
-                    value={adSoyad}
-                    onChange={(e) => setAdSoyad(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    required
-                  />
+
+                {/* Bazadan gələn Vəzifələr (Checkbox siyahısı) */}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                    İxtisas / Vəzifələr (Bazadan oxunur - Bir neçəni seçə bilərsiniz):
+                  </label>
+                  <div className="flex flex-wrap gap-4 items-center">
+                    {dbVezifeler.map((v) => (
+                      <label key={v.id} className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-800 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-xs hover:bg-slate-100 transition-all">
+                        <input
+                          type="checkbox"
+                          checked={secilenVezifeler.includes(v.ad)}
+                          onChange={() => handleCheckboxChange(v.ad)}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                        />
+                        {v.ad}
+                      </label>
+                    ))}
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">İxtisas / Vəzifə</label>
-                  <select
-                    value={vezife}
-                    onChange={(e) => setVezife(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                  >
-                    <option value="Elektrik və Teplovoz Maşinisti (İkili)">Elektrik və Teplovoz (İkili)</option>
-                    <option value="Elektrik Qatarı Maşinisti">Elektrik Qatarı Maşinisti</option>
-                    <option value="Teplovoz Maşinisti">Teplovoz Maşinisti</option>
-                    <option value="Köməkçi Maşinist">Köməkçi Maşinist</option>
-                    <option value="İstismar üzrə Mühəndis">İstismar üzrə Mühəndis</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Əlaqə nömrəsi</label>
-                  <input
-                    type="text"
-                    placeholder="+994 (XX) XXX-XX-XX"
-                    value={telefon}
-                    onChange={(e) => setTelefon(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div className="flex items-end">
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm transition-all text-sm"
+                    className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium shadow-sm transition-all text-sm"
                   >
-                    Yadda Saxla
+                    Maşinisti Yadda Saxla
                   </button>
                 </div>
               </form>
@@ -178,7 +210,7 @@ export default function Home() {
               <div className="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 className="text-lg font-bold text-slate-800">Maşinistlərin Tabel Siyahısı</h3>
                 <button 
-                  onClick={fetchMashinistler} 
+                  onClick={fetchData} 
                   className="flex items-center gap-1 text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-medium transition-all"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -209,7 +241,11 @@ export default function Home() {
                         <tr key={m.tabel_no} className="hover:bg-slate-50/50">
                           <td className="py-4 px-6 font-bold text-blue-600">{m.tabel_no}</td>
                           <td className="py-4 px-6 font-medium text-slate-900">{m.ad_soyad}</td>
-                          <td className="py-4 px-6">{m.vezife}</td>
+                          <td className="py-4 px-6">
+                            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold">
+                              {m.vezife}
+                            </span>
+                          </td>
                           <td className="py-4 px-6">{m.telefon || '-'}</td>
                           <td className="py-4 px-6">
                             <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium">
